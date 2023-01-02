@@ -1,6 +1,6 @@
 # Navicat Dumper
 
-This tool dumps Navicat database connections saved in the computer registries, including passwords in plain text.
+This tool dumps Navicat database connections stored in the computer registries, including passwords in plain text.
 
 > Tested on Windows, with Navicat 15 and MySQL connections.
 
