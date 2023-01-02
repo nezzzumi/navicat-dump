@@ -1,9 +1,15 @@
 package main
 
 import (
+	"crypto/cipher"
+	"crypto/sha1"
+	"encoding/hex"
 	"fmt"
 	"os"
+	"strconv"
 
+	"github.com/andreburgaud/crypt2go/ecb"
+	"golang.org/x/crypto/blowfish"
 	"golang.org/x/sys/windows/registry"
 )
 
@@ -31,6 +37,56 @@ func NewServer(name string, keyPath string) Server {
 	pwd, _, _ := key.GetStringValue("Pwd")
 
 	return Server{Name: name, KeyPath: keyPath, Host: host, Port: int(port), User: user, Pwd: pwd}
+}
+
+func decryptPwd(pwd string) string {
+	key := "3DC5CA39"
+	keyHash := sha1.Sum([]byte(key))
+
+	rawIV := []byte{0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff}
+
+	iv := make([]byte, len(rawIV))
+	cipherKey, _ := blowfish.NewCipher(keyHash[:])
+
+	encrypterCBC := cipher.NewCBCEncrypter(cipherKey, iv)
+	encrypterCBC.CryptBlocks(iv, rawIV)
+
+	bytesPwd, _ := hex.DecodeString(pwd)
+	var pwdDecrypted string
+
+	fullBlocksCount := len(bytesPwd) / blowfish.BlockSize
+
+	for i := 0; i < fullBlocksCount; i++ {
+		low := i * blowfish.BlockSize
+		high := i*blowfish.BlockSize + blowfish.BlockSize
+
+		block := make([]byte, blowfish.BlockSize)
+		blockDecrypted := make([]byte, blowfish.BlockSize)
+
+		copy(block, bytesPwd[low:high])
+
+		decrypterCBC := cipher.NewCBCDecrypter(cipherKey, iv)
+		decrypterCBC.CryptBlocks(blockDecrypted, block)
+
+		for j := 0; j < len(blockDecrypted); j++ {
+			pwdDecrypted += string(blockDecrypted[j])
+		}
+
+		for j := 0; j < len(block); j++ {
+			iv[j] = iv[j] ^ block[j]
+		}
+	}
+
+	if remainder := len(bytesPwd) % blowfish.BlockSize; remainder != 0 {
+		encrypterECB := ecb.NewECBEncrypter(cipherKey)
+		encrypterECB.CryptBlocks(iv, iv)
+
+		for i := 0; i < remainder; i++ {
+			pwdDecrypted += string(bytesPwd[fullBlocksCount*8+i] ^ iv[i])
+		}
+	}
+
+	return pwdDecrypted
 }
 
 func main() {
@@ -66,6 +122,11 @@ func main() {
 	}
 
 	for _, server := range allServers {
-		fmt.Println(server.Name, server.KeyPath, server.Pwd)
+		fmt.Println("Name: " + server.Name)
+		fmt.Println("Host: " + server.Host)
+		fmt.Println("Port: " + strconv.Itoa(server.Port))
+		fmt.Println("Username: " + server.User)
+		fmt.Println("Password: " + decryptPwd(server.Pwd))
+		fmt.Println()
 	}
 }
