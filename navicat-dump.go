@@ -29,6 +29,7 @@ func NewServer(name string, keyPath string) Server {
 
 	if err != nil {
 		fmt.Println("error: opening "+name, err)
+		os.Exit(1)
 	}
 
 	host, _, _ := key.GetStringValue("Host")
