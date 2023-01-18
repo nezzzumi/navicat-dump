@@ -6,7 +6,7 @@ This tool dumps Navicat database connections stored in the computer registries, 
 
 ## TODO
 
-- [ ] Test with other types of DBMS.
+- [x] Test with other types of DBMS.
 
 ## References
 
