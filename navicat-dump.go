@@ -100,26 +100,37 @@ func main() {
 
 	rights := registry.QUERY_VALUE | registry.ENUMERATE_SUB_KEYS
 	allServers := []Server{}
+	dbmsPaths := []string{
+		`\SOFTWARE\PremiumSoft\Navicat\Servers\`,        // MySQL
+		`\SOFTWARE\PremiumSoft\NavicatMARIADB\Servers\`, // MariaDB
+		`\SOFTWARE\PremiumSoft\NavicatMONGODB\Servers\`, // MONGODB
+		`\SOFTWARE\PremiumSoft\NavicatMSSQL\Servers\`,   // SQL SERVER
+		`\SOFTWARE\PremiumSoft\NavicatOra\Servers\`,     // Oracle
+		`\SOFTWARE\PremiumSoft\NavicatPG\Servers\`,      // PostgreSQL
+		`\SOFTWARE\PremiumSoft\NavicatSQLite\Servers\`,  // SQLite
+	}
 
-	for _, subKey := range subKeys {
-		keyPath := subKey + `\SOFTWARE\PremiumSoft\Navicat\Servers\`
+	for _, dbmsPath := range dbmsPaths {
+		for _, subKey := range subKeys {
+			keyPath := subKey + dbmsPath
 
-		key, err := registry.OpenKey(registry.USERS, keyPath, uint32(rights))
+			key, err := registry.OpenKey(registry.USERS, keyPath, uint32(rights))
 
-		if err != nil {
-			continue
+			if err != nil {
+				continue
+			}
+
+			servers, err := key.ReadSubKeyNames(-1)
+
+			if err != nil {
+				continue
+			}
+
+			for _, serverName := range servers {
+				allServers = append(allServers, NewServer(serverName, keyPath+serverName))
+			}
+
 		}
-
-		servers, err := key.ReadSubKeyNames(-1)
-
-		if err != nil {
-			continue
-		}
-
-		for _, serverName := range servers {
-			allServers = append(allServers, NewServer(serverName, keyPath+serverName))
-		}
-
 	}
 
 	for _, server := range allServers {
